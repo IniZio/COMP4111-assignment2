@@ -1,4 +1,4 @@
-package com.example;
+package com.comp4111;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -10,8 +10,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-public class MyResourceTest {
+public class BookTest {
 
     private HttpServer server;
     private WebTarget target;
@@ -42,7 +43,8 @@ public class MyResourceTest {
      */
     @Test
     public void testGetIt() {
-        String responseMsg = target.path("myresource").request().get(String.class);
-        assertEquals("Got it!", responseMsg);
+        String responseMsg = target.path("books").request().get(String.class);
+        // assertEquals("Got it!", responseMsg);
+        assertNotNull(responseMsg);
     }
 }
