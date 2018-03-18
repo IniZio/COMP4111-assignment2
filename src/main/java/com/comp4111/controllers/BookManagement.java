@@ -10,7 +10,9 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
@@ -25,8 +27,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
-
-import org.glassfish.grizzly.utils.ArrayUtils;
 
 @Path("books")
 public class BookManagement {
@@ -172,5 +172,75 @@ public class BookManagement {
                 
             }
         });
+    }
+
+    @PUT
+    @Path("{bookId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public void modifyBook (final Map<String, Object> modification, @PathParam("bookId") String bookId, @Suspended final AsyncResponse response) {
+        booksRef.orderByChild("id").equalTo(bookId).addListenerForSingleValueEvent(new ValueEventListener(){
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot.hasChildren()) {
+                    try {
+                        Book book = snapshot.getChildren().iterator().next().getValue(Book.class).Id(bookId);
+                        // Want to borrow but not available
+                        if (
+                            (!book.available && !(Boolean) modification.get("Available"))
+                            || (book.available && (Boolean) modification.get("Available"))
+                        ) {
+                            try {
+                                response.resume(
+                                    Response
+                                    .status(Response.Status.BAD_REQUEST)
+                                    .build()
+                                );
+                                return;
+                            } catch (Exception e) {
+                                System.out.println("cant send response with error: " + e);
+                            }
+                        }
+                        DatabaseReference bookRef = booksRef.child(book.getId());
+                        book.Available((Boolean) modification.get("Available"));
+                        bookRef.setValue(book.serialize(), new DatabaseReference.CompletionListener() {
+                            @Override
+                            public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+                                if (databaseError != null) {
+                                System.out.println("Data could not be saved " + databaseError.getMessage());
+                                } else {
+                                    System.out.println("Data saved successfully.");
+                                    try {
+                                        response.resume(
+                                            Response
+                                            .status(Response.Status.OK)
+                                            .build()
+                                        );
+                                    } catch (Exception e) {
+                                        System.out.println("cant send response with error: " + e);
+                                    }
+                                }
+                            }
+                        });
+                    } catch (Exception e) {}
+                } else {
+                    try {
+                        response.resume(
+                            Response
+                            .status(Response.Status.NOT_FOUND)
+                            .type("text/plain").entity("No book record")
+                            .build()
+                        );
+                    } catch (Exception e) {
+                        System.out.println("cant send response with error: " + e);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                
+            }
+        });       
     }
 }

@@ -32,10 +32,10 @@ public class Book {
     return this.id;
   }
 
-  // public Book Id (String id) {
-  //   this.id = id;
-  //   return this;
-  // }
+  public Book Id (String id) {
+    this.id = id;
+    return this;
+  }
 
   public Book Title (String title) {
     this.title = title;
