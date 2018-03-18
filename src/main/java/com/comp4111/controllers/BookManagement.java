@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -227,8 +228,7 @@ public class BookManagement {
                     try {
                         response.resume(
                             Response
-                            .status(Response.Status.NOT_FOUND)
-                            .type("text/plain").entity("No book record")
+                            .status(404, "No book record")
                             .build()
                         );
                     } catch (Exception e) {
@@ -242,5 +242,51 @@ public class BookManagement {
                 
             }
         });       
+    }
+
+    @DELETE
+    @Path("{bookId}")
+    public void deleteBook (@PathParam("bookId") String bookId, @Suspended final AsyncResponse response) {
+        booksRef.orderByChild("id").equalTo(bookId).addListenerForSingleValueEvent(new ValueEventListener(){
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot.hasChildren()) {
+                    booksRef.child(bookId).removeValue(new DatabaseReference.CompletionListener() {
+                        @Override
+                            public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+                                if (databaseError != null) {
+                                System.out.println("Data could not be deleted " + databaseError.getMessage());
+                                } else {
+                                    System.out.println("Data deleted successfully.");
+                                    try {
+                                        response.resume(
+                                            Response
+                                            .status(Response.Status.OK)
+                                            .build()
+                                        );
+                                    } catch (Exception e) {
+                                        System.out.println("cant send response with error: " + e);
+                                    }
+                                }
+                            }
+                    });
+                } else {
+                    try {
+                        response.resume(
+                            Response
+                            .status(404, "No book record")
+                            .build()
+                        );
+                    } catch (Exception e) {
+                        System.out.println("cant send response with error: " + e);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                
+            }
+        });
     }
 }
