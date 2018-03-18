@@ -1,12 +1,18 @@
 package com.comp4111.controllers;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.MediaType;
@@ -17,7 +23,10 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+
+import org.glassfish.grizzly.utils.ArrayUtils;
 
 @Path("books")
 public class BookManagement {
@@ -26,10 +35,83 @@ public class BookManagement {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Book getBook () {
-        Book book = new Book();
-        book.Title("XYZ");
-        return book;
+    public void getBook (
+        @DefaultValue("") @QueryParam("id") String id,
+        @DefaultValue("") @QueryParam("title") String title,
+        @DefaultValue("") @QueryParam("author") String author,
+        @DefaultValue("-1") @QueryParam("limit") Integer limit,
+        @DefaultValue("") @QueryParam("sortby") String sortby,
+        @DefaultValue("") @QueryParam("order") String order,        
+        @Suspended final AsyncResponse response
+    ) {
+        Query booksQuery = booksRef;
+    
+        if (limit != -1) {
+            booksQuery = booksQuery.limitToLast(limit);
+        }
+
+        final Boolean sortable = sortby != null && !sortby.isEmpty() && order != null && !order.isEmpty();
+        if (sortable) {
+            booksQuery = booksQuery.orderByChild(sortby);
+        }
+
+        booksQuery.addListenerForSingleValueEvent(new ValueEventListener(){
+            
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+                    try {
+                        ArrayList<Book> books = new ArrayList<Book>();
+                        for (DataSnapshot bookSnapshot: snapshot.getChildren()) {
+                            Book entry = bookSnapshot.getValue(Book.class);
+                            Boolean flag = true;
+                            if (author != null && !author.isEmpty() && !entry.author.equals(author)) {
+                                flag = false;
+                            }
+                            if (id != null && !id.isEmpty() && !entry.getId().equals(id)) {
+                                flag = false;
+                            }
+                            if (title != null && !title.isEmpty() && !entry.title.equals(title)) {
+                                flag = false;
+                            }
+                            if (flag) {
+                                books.add(entry);
+                            }
+                        }
+
+                        
+                        if (books.size() <= 0) {
+                            response.resume(
+                                Response
+                                .status(Response.Status.NO_CONTENT)
+                                .build()
+                            );
+                            return;
+                        }
+
+                        if (sortable && order.equals("desc")) {
+                            Collections.reverse(books);
+                        }
+
+                        HashMap<String, Object> result = new HashMap<String, Object>();
+                        result.put("FoundBooks", books.size());
+                        result.put("Results", books.toArray());
+
+                        response.resume(
+                            Response
+                            .status(Response.Status.CREATED)
+                            .entity(result)
+                            .build()
+                        );
+                    } catch (Exception e) {
+                        System.out.println("cant send response with error: " + e);
+                    }
+                }
+            
+                @Override
+                public void onCancelled(DatabaseError error) {
+                    
+                }
+            });
     }
 
     @POST

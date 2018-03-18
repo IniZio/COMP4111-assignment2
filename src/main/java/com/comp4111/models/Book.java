@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class Book {
-  private String id;
+  public String id;
   public String title;
   public String author;
   public String publisher;
@@ -17,6 +17,15 @@ public class Book {
     if (!(this.id != null && !this.id.isEmpty())) {
       this.id = UUID.randomUUID().toString();
     }
+  }
+
+  public Book (Map<String, Object> map) {
+    this.id = (String) map.get("id");
+    this.title = (String) map.get("title");
+    this.author = (String) map.get("author");
+    this.publisher = (String) map.get("publisher");
+    this.year = (Integer) map.get("year");
+    this.available = (Boolean) map.get("available");
   }
 
   public String getId () {
